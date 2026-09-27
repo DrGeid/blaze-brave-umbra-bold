@@ -54,14 +54,18 @@ function Journal() {
     sleep,
   };
 
-  function applyEntry(found: {
-    temple: Intensity;
-    frontal?: Intensity;
-    ocular: Intensity;
-    occipital: Intensity;
-    sleep?: Intensity;
-    notes: string;
-  } | undefined) {
+  function applyEntry(
+    found:
+      | {
+          temple: Intensity;
+          frontal?: Intensity;
+          ocular: Intensity;
+          occipital: Intensity;
+          sleep?: Intensity;
+          notes: string;
+        }
+      | undefined,
+  ) {
     if (found) {
       setTemple(found.temple);
       setFrontal(found.frontal ?? 0);
@@ -85,10 +89,10 @@ function Journal() {
         <p className="text-xs uppercase tracking-[0.18em] text-faint">Pilot journal</p>
         <h1 className="mt-3 font-display text-4xl sm:text-5xl">What did the head do?</h1>
         <p className="mt-3 max-w-2xl text-muted">
-          Stays on this device for the public pilot. Log quiet days as well as
-          attacks — how the forehead felt, and how you slept. Frontal pressure is
-          the “sinus” / forehead map. Sleep is scored because a broken night can
-          open the next-day migraine.
+          Saved on this device, separately for each signed-in account. Guest entries stay in the
+          guest journal. Log quiet days as well as attacks — how the forehead felt, and how you
+          slept. Frontal pressure is the “sinus” / forehead map. Sleep is scored because a broken
+          night can open the next-day migraine.
         </p>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -130,12 +134,7 @@ function Journal() {
 
             <div className="mt-6 space-y-5">
               {PHENOTYPES.map((id) => (
-                <IntensityRow
-                  key={id}
-                  id={id}
-                  value={values[id]}
-                  onChange={setters[id]}
-                />
+                <IntensityRow key={id} id={id} value={values[id]} onChange={setters[id]} />
               ))}
             </div>
 
@@ -180,9 +179,8 @@ function Journal() {
               <h2 className="font-display text-2xl">Learning</h2>
               {!learned.ready ? (
                 <p className="mt-2 text-sm text-muted">
-                  {entries.length}/4 days logged. After four days with attached
-                  weather, Halo starts lifting weights that were high on your
-                  attack or poor-sleep days.
+                  {entries.length}/4 days logged. After four days with attached weather, Halo starts
+                  lifting weights that were high on your attack or poor-sleep days.
                 </p>
               ) : learned.insights.length === 0 ? (
                 <p className="mt-2 text-sm text-muted">
@@ -192,9 +190,7 @@ function Journal() {
                 <ul className="mt-3 space-y-3">
                   {learned.insights.map((i) => (
                     <li key={`${i.phenotype}-${i.factor}`} className="text-sm">
-                      <span className="font-medium">
-                        {PHENOTYPE_META[i.phenotype].label}
-                      </span>
+                      <span className="font-medium">{PHENOTYPE_META[i.phenotype].label}</span>
                       <span className="text-muted">
                         {" "}
                         {i.lift > 0 ? "rises with" : "falls with"}{" "}
@@ -218,11 +214,15 @@ function Journal() {
                     .sort((a, b) => b.date.localeCompare(a.date))
                     .slice(0, 12)
                     .map((e) => (
-                      <li key={e.id} className="flex items-center justify-between gap-3 py-2.5 text-sm">
+                      <li
+                        key={e.id}
+                        className="flex items-center justify-between gap-3 py-2.5 text-sm"
+                      >
                         <div>
                           <p className="font-medium">{formatMonthDay(e.date)}</p>
                           <p className="text-faint">
-                            T{e.temple} · F{e.frontal ?? 0} · E{e.ocular} · N{e.occipital} · S{e.sleep ?? 0}
+                            T{e.temple} · F{e.frontal ?? 0} · E{e.ocular} · N{e.occipital} · S
+                            {e.sleep ?? 0}
                           </p>
                         </div>
                         <button

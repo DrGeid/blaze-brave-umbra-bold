@@ -35,7 +35,10 @@ function Home() {
     if (!hydrated || !learned.ready) return raw;
     const idx = data.days.findIndex((d) => d.date === raw.date);
     const prevMean = idx > 0 ? data.days[idx - 1].weather.tempMean : null;
-    return buildDayResult(raw.weather, raw.sky, prevMean, learned.weights);
+    return {
+      ...buildDayResult(raw.weather, raw.sky, prevMean, learned.weights),
+      dataNotes: raw.dataNotes,
+    };
   }, [data, date, learned, hydrated]);
 
   const lift: Partial<Record<string, number>> = {};
@@ -44,30 +47,27 @@ function Home() {
     if (Math.abs(i.lift) > Math.abs(prev)) lift[i.factor] = i.lift;
   }
 
-  const lead = PHENOTYPES.map((id) => selected.phenotypes[id]).sort(
-    (a, b) => b.score - a.score,
-  )[0];
+  const lead = PHENOTYPES.map((id) => selected.phenotypes[id]).sort((a, b) => b.score - a.score)[0];
 
   return (
     <AppShell>
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-        <p className="text-xs uppercase tracking-[0.18em] text-faint">
-          {data.location.region}
-        </p>
+        <p className="text-xs uppercase tracking-[0.18em] text-faint">{data.location.region}</p>
         <div className="mt-3 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-xl">
-            <h1 className="font-display text-4xl sm:text-5xl">
-              {formatLongDate(selected.date)}
-            </h1>
+            <h1 className="font-display text-4xl sm:text-5xl">{formatLongDate(selected.date)}</h1>
+            <p className="mt-2 text-sm font-medium text-muted">
+              {selected.date < data.today.date
+                ? "Historical weather estimate"
+                : selected.date === data.today.date
+                  ? "Today's forecast"
+                  : "Forecast"}
+            </p>
             <p className="mt-3 text-lg text-muted">{selected.headline}</p>
             <p className="mt-2 text-sm text-faint">{nowcastCopy(selected)}</p>
           </div>
           <div className="flex items-center gap-5 rounded-xl bg-surface px-5 py-4 shadow-[var(--shadow-border)]">
-            <ScoreGauge
-              score={selected.opportunity}
-              band={selected.band}
-              label="Opportunity"
-            />
+            <ScoreGauge score={selected.opportunity} band={selected.band} label="Opportunity" />
             <div>
               <p className="text-xs uppercase tracking-[0.16em] text-faint">Opportunity</p>
               <p className="mt-1 font-display text-lg">{bandLabel(selected.band)}</p>
@@ -84,7 +84,7 @@ function Home() {
         </div>
 
         <div className="mt-8">
-          <WeekStrip days={data.days} selected={selected.date} onSelect={setDate} />
+          <WeekStrip days={data.days} today={data.today.date} selected={date} onSelect={setDate} />
         </div>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -103,18 +103,29 @@ function Home() {
             {PHENOTYPE_META[focus].label}
           </p>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed opacity-90">
-            {PHENOTYPE_META[focus].detail} Default weights favour published weather
-            and air-quality signals. Anecdotal sky terms stay small until enough
-            quiet-versus-attack days are logged on this device. Sleep is scored as
-            disruption risk — a high number means a harder night, which can open
-            the door to an attack. Frontal pressure is the forehead / “sinus”
-            map, kept separate from a temple vice and from pain behind the eyes.
+            {PHENOTYPE_META[focus].detail} Default weights favour published weather and air-quality
+            signals. Anecdotal sky terms stay small until enough quiet-versus-attack days are logged
+            on this device. Sleep is scored as disruption risk — a high number means a harder night,
+            which can open the door to an attack. Frontal pressure is the forehead / “sinus” map,
+            kept separate from a temple vice and from pain behind the eyes.
           </p>
         </section>
 
         <div className="mt-6">
           <FactorList factors={selected.factors} lift={lift} />
         </div>
+        {selected.dataNotes?.length ? (
+          <aside
+            className="mt-4 rounded-lg border border-border p-4 text-xs leading-relaxed text-muted"
+            aria-label="Data notes"
+          >
+            {selected.dataNotes.map((note) => (
+              <p key={note} className="mb-1">
+                {note}
+              </p>
+            ))}
+          </aside>
+        ) : null}
 
         <div className="mt-6">
           <PressureChart hourly={data.hourly} />

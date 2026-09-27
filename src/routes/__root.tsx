@@ -2,6 +2,8 @@ import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-r
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
+import { JournalAccountScope } from "@/components/journal-account-scope";
+import { getAccountAccess } from "@/lib/clinic-access";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Halo";
@@ -9,6 +11,7 @@ const host = import.meta.env.VITE_PUBLIC_HOSTNAME;
 const ogImage = host ? `https://${host}/og.jpg` : undefined;
 
 export const Route = createRootRoute({
+  beforeLoad: async () => ({ accountAccess: await getAccountAccess() }),
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -51,7 +54,9 @@ function Root() {
       <body>
         <PreviewHostBridge />
         <AuthProvider>
-          <Outlet />
+          <JournalAccountScope>
+            <Outlet />
+          </JournalAccountScope>
         </AuthProvider>
         <Toaster
           position="bottom-center"

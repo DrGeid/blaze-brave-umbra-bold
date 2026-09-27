@@ -121,6 +121,7 @@ export type PhenotypeScore = {
 };
 
 export type DayResult = {
+  dataNotes?: string[];
   date: string;
   weather: DayWeather;
   sky: SkyContext;

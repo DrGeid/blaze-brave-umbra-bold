@@ -1,18 +1,22 @@
 import { useMemo } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect, notFound } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { clinicBriefing } from "@/lib/halo/briefing";
 import { EVIDENCE_COPY, FACTOR_META, PHENOTYPE_META } from "@/lib/halo/constants";
-import { getHaloForecast } from "@/lib/halo/fetch-forecast";
+import { getClinicForecast } from "@/lib/clinic-access";
 import { bandLabel, formatLongDate } from "@/lib/halo/format";
 import type { HaloForecast } from "@/lib/halo/types";
 import { PHENOTYPES } from "@/lib/halo/types";
 
 export const Route = createFileRoute("/clinic")({
-  loader: () => getHaloForecast(),
+  beforeLoad: ({ context }) => {
+    if (!context.accountAccess.userId) throw redirect({ to: "/login" });
+    if (!context.accountAccess.canAccessClinic) throw notFound();
+  },
+  loader: () => getClinicForecast(),
   component: Clinic,
 });
 
@@ -27,10 +31,10 @@ function Clinic() {
         <p className="text-xs uppercase tracking-[0.18em] text-faint">Clinician desk</p>
         <h1 className="mt-3 font-display text-4xl sm:text-5xl">Halton briefing</h1>
         <p className="mt-3 max-w-2xl text-muted">
-          One regional score for Oakville and Burlington. Five phenotypes —
-          temple, frontal, ocular, occipital, and sleep disruption. Use this as a
-          weather and air-quality context layer, not a diagnosis. Accounts and
-          shared patient logs come after the public pilot.
+          One regional score for Oakville and Burlington. Five phenotypes — temple, frontal, ocular,
+          occipital, and sleep disruption. Use this as a weather and air-quality context layer, not
+          a diagnosis. This desk is restricted to the owner account; journals remain private to each
+          account on its device.
         </p>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -58,22 +62,19 @@ function Clinic() {
             </dl>
             <ul className="mt-6 space-y-3 text-sm leading-relaxed text-muted">
               <li>
-                Facial pressure that patients call sinus is, with ordinary weather
-                swings, more often migraine than true barosinusitis.
+                Facial pressure that patients call sinus is, with ordinary weather swings, more
+                often migraine than true barosinusitis.
               </li>
               <li>
-                Temple-predominant days track a vice at the sides. Frontal days
-                track forehead / “sinus” pressure with falling barometer,
-                humidity, and pollen — more often migraine than sinus infection.
-                Ocular days track glare, humidity, and pressure behind the eyes.
-                Occipital days track wind, fronts, and temperature. Sleep days
-                track heat, storms, and air quality — and a broken night can
-                open the next-day attack.
+                Temple-predominant days track a vice at the sides. Frontal days track forehead /
+                “sinus” pressure with falling barometer, humidity, and pollen — more often migraine
+                than sinus infection. Ocular days track glare, humidity, and pressure behind the
+                eyes. Occipital days track wind, fronts, and temperature. Sleep days track heat,
+                storms, and air quality — and a broken night can open the next-day attack.
               </li>
               <li>
-                Ask what they feel, and how they slept, not only “migraine
-                yes/no.” The journal on this device can later re-weight factors
-                per person.
+                Ask what they feel, and how they slept, not only “migraine yes/no.” The journal on
+                this device can later re-weight factors per person.
               </li>
             </ul>
             <Button
@@ -91,10 +92,21 @@ function Clinic() {
             <p className="text-xs uppercase tracking-[0.16em] opacity-70">How to counsel</p>
             <h2 className="mt-2 font-display text-2xl">A 90-second script</h2>
             <ol className="mt-4 list-decimal space-y-3 pl-4 text-sm leading-relaxed opacity-90">
-              <li>Name the day: “The Halton air looks {bandLabel(day.band).toLowerCase()} for weather-sensitive heads.”</li>
-              <li>Separate sinus infection from weather-migraine so they skip unneeded antibiotics.</li>
-              <li>Protect sleep, fluids, meals. Treat early if this is a known pattern. Smoke and ragweed days are real Ontario signals.</li>
-              <li>Do not over-promise on moon, tide, flare, or Mercury. Offer the journal if they want proof for themselves.</li>
+              <li>
+                Name the day: “The Halton air looks {bandLabel(day.band).toLowerCase()} for
+                weather-sensitive heads.”
+              </li>
+              <li>
+                Separate sinus infection from weather-migraine so they skip unneeded antibiotics.
+              </li>
+              <li>
+                Protect sleep, fluids, meals. Treat early if this is a known pattern. Smoke and
+                ragweed days are real Ontario signals.
+              </li>
+              <li>
+                Do not over-promise on moon, tide, flare, or Mercury. Offer the journal if they want
+                proof for themselves.
+              </li>
             </ol>
           </aside>
         </div>

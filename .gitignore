@@ -3,3 +3,10 @@ node_modules/
 .github_repo
 .env
 .env.*
+.npm-cache/
+.vercel-cli-config/
+.vercel-cli-local/
+.vercel/
+dist/
+screenshots/
+.env*

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClinicRouteImport } from './routes/clinic'
 import { Route as JournalRouteImport } from './routes/journal'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ScienceRouteImport } from './routes/science'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -36,6 +37,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScienceRoute = ScienceRouteImport.update({
   id: '/science',
   path: '/science',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/clinic': typeof ClinicRoute
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/science': typeof ScienceRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/clinic': typeof ClinicRoute
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/science': typeof ScienceRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -69,21 +77,36 @@ export interface FileRoutesById {
   '/clinic': typeof ClinicRoute
   '/journal': typeof JournalRoute
   '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
   '/science': typeof ScienceRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/clinic' | '/journal' | '/login' | '/science' | '/api/auth/$'
+    | '/'
+    | '/clinic'
+    | '/journal'
+    | '/login'
+    | '/register'
+    | '/science'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/clinic' | '/journal' | '/login' | '/science' | '/api/auth/$'
+  to:
+    | '/'
+    | '/clinic'
+    | '/journal'
+    | '/login'
+    | '/register'
+    | '/science'
+    | '/api/auth/$'
   id:
     | '__root__'
     | '/'
     | '/clinic'
     | '/journal'
     | '/login'
+    | '/register'
     | '/science'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
@@ -93,6 +116,7 @@ export interface RootRouteChildren {
   ClinicRoute: typeof ClinicRoute
   JournalRoute: typeof JournalRoute
   LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
   ScienceRoute: typeof ScienceRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -127,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/science': {
       id: '/science'
       path: '/science'
@@ -149,6 +180,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClinicRoute: ClinicRoute,
   JournalRoute: JournalRoute,
   LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
   ScienceRoute: ScienceRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }

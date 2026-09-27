@@ -1,0 +1,6 @@
+.npm-cache/
+.vercel-cli-config/
+.vercel-cli-local/
+.vercel/output/
+dist/
+node_modules/

@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { hourlyToDays } from "./aggregate";
 import { DISCLAIMER, HALTON } from "./constants";
 import { mean } from "./math";
+import { shiftDate } from "./date-window";
 import { buildDayResult, buildSky } from "./scoring";
 import { bestFlare, rForecastScore, type FlareEvent } from "./space";
 import type { DayWeather, HaloForecast, HourSample, SpaceDay } from "./types";
@@ -31,13 +32,29 @@ async function loadForecast(): Promise<HaloForecast> {
   const results = daysWeather.map((w, i) => {
     const sky = buildSky(w.date, spaceForDate(w.date, kp, space));
     const prevMean = i > 0 ? daysWeather[i - 1].tempMean : null;
-    return buildDayResult(w, sky, prevMean);
+    const result = buildDayResult(w, sky, prevMean);
+    const dataNotes: string[] = [];
+    if (!kp.some((p) => torontoDate(p.time) === w.date))
+      dataNotes.push(
+        "Geomagnetic activity uses a baseline estimate because no daily reading is available.",
+      );
+    if (!air.has(w.date))
+      dataNotes.push(
+        "Air-quality readings are unavailable for this date; these terms use the model's baseline.",
+      );
+    if (w.date < todayIso)
+      dataNotes.push(
+        "Calculated from archived weather model estimates. These are not saved Halo forecasts or direct station observations. Pollen and sky terms remain estimates.",
+      );
+    return { ...result, dataNotes };
   });
   const today =
     results.find((d) => d.date === todayIso) ??
     results.find((d) => d.date > todayIso) ??
     results[Math.min(2, results.length - 1)];
-  const forecastDays = results.filter((d) => d.date >= today.date).slice(0, 7);
+  const startDate = shiftDate(todayIso, -7);
+  const endDate = shiftDate(todayIso, 7);
+  const forecastDays = results.filter((d) => d.date >= startDate && d.date <= endDate);
   const extras = [
     air.size ? "CAMS PM2.5/NO₂/O₃" : null,
     "NOAA GOES X-ray",
@@ -56,7 +73,9 @@ async function loadForecast(): Promise<HaloForecast> {
     source: `${source} · ${extras}`,
     today,
     days: forecastDays,
-    hourly,
+    hourly: hourly.filter(
+      (h) => h.time.slice(0, 10) >= startDate && h.time.slice(0, 10) <= endDate,
+    ),
     disclaimer: DISCLAIMER,
   };
 }
@@ -96,17 +115,15 @@ function spaceForDate(date: string, points: KpPoint[], space: SpacePack): SpaceD
     flareClass,
     flareScore,
     rScale: forecast?.rScale ?? 0,
-    rLabel: forecast?.label ?? (flareClass === "None" ? "No significant flare" : `GOES ${flareClass}`),
+    rLabel:
+      forecast?.label ?? (flareClass === "None" ? "No significant flare" : `GOES ${flareClass}`),
   };
 }
 
 function kpForDate(points: KpPoint[], date: string): number {
-  const vals = points
-    .filter((p) => torontoDate(p.time) === date)
-    .map((p) => p.kp);
+  const vals = points.filter((p) => torontoDate(p.time) === date).map((p) => p.kp);
   if (vals.length) return Math.max(...vals);
-  const last = points.at(-1)?.kp;
-  return last ?? 2;
+  return 2;
 }
 
 function torontoDate(iso: string): string {
@@ -123,9 +140,9 @@ function torontoDate(iso: string): string {
 
 async function loadWeather(): Promise<{ hourly: HourSample[]; source: string }> {
   try {
-    const hourly = await loadOpenMeteoEnsemble();
+    const hourly = await loadOpenMeteo();
     if (hourly.length >= 48) {
-      return { hourly, source: "Open-Meteo ensemble (GEM/GFS mix) · Halton midpoint" };
+      return { hourly, source: "Open-Meteo weather models and recent history · Halton midpoint" };
     }
   } catch {
     /* fall through */
@@ -134,8 +151,8 @@ async function loadWeather(): Promise<{ hourly: HourSample[]; source: string }> 
   return { hourly, source: "MET Norway location forecast · Halton midpoint" };
 }
 
-async function loadOpenMeteoEnsemble(): Promise<HourSample[]> {
-  const url = new URL("https://ensemble-api.open-meteo.com/v1/ensemble");
+async function loadOpenMeteo(): Promise<HourSample[]> {
+  const url = new URL("https://api.open-meteo.com/v1/forecast");
   url.searchParams.set("latitude", String(HALTON.lat));
   url.searchParams.set("longitude", String(HALTON.lon));
   url.searchParams.set(
@@ -153,9 +170,13 @@ async function loadOpenMeteoEnsemble(): Promise<HourSample[]> {
     ].join(","),
   );
   url.searchParams.set("timezone", HALTON.timezone);
-  url.searchParams.set("past_days", "2");
-  url.searchParams.set("forecast_days", "7");
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  // One extra past day supplies the first visible day's pressure/temperature change.
+  url.searchParams.set("past_days", "8");
+  url.searchParams.set("forecast_days", "8");
+  const res = await fetch(url, {
+    headers: { Accept: "application/json" },
+    signal: AbortSignal.timeout(12000),
+  });
   if (!res.ok) throw new Error(`Open-Meteo ${res.status}`);
   const json = (await res.json()) as {
     hourly: Record<string, Array<number | string | null>>;
@@ -190,7 +211,10 @@ type MetJson = {
             wind_speed_of_gust?: number;
           };
         };
-        next_1_hours?: { details?: { precipitation_amount?: number }; summary?: { symbol_code?: string } };
+        next_1_hours?: {
+          details?: { precipitation_amount?: number };
+          summary?: { symbol_code?: string };
+        };
         next_6_hours?: { details?: { precipitation_amount?: number } };
       };
     }>;
@@ -227,13 +251,7 @@ async function loadMetNorway(): Promise<HourSample[]> {
       wind: d.wind_speed != null ? d.wind_speed * 3.6 : null,
       gust: d.wind_speed_of_gust != null ? d.wind_speed_of_gust * 3.6 : null,
       cloud: d.cloud_area_fraction ?? null,
-      weatherCode: symbol.includes("thunder")
-        ? 95
-        : snowy
-          ? 73
-          : symbol.includes("rain")
-            ? 61
-            : 1,
+      weatherCode: symbol.includes("thunder") ? 95 : snowy ? 73 : symbol.includes("rain") ? 61 : 1,
     };
   });
 }
@@ -282,7 +300,10 @@ function parseKp(json: unknown): KpPoint[] {
   }
   if (Array.isArray(first)) {
     const rows = json as Array<Array<string>>;
-    return rows.slice(1).map((r) => ({ time: r[0], kp: Number(r[1]) })).filter((p) => Number.isFinite(p.kp));
+    return rows
+      .slice(1)
+      .map((r) => ({ time: r[0], kp: Number(r[1]) }))
+      .filter((p) => Number.isFinite(p.kp));
   }
   return [];
 }
@@ -297,8 +318,8 @@ async function loadAirQuality(): Promise<
     url.searchParams.set("longitude", String(HALTON.lon));
     url.searchParams.set("hourly", "pm2_5,nitrogen_dioxide,ozone");
     url.searchParams.set("timezone", HALTON.timezone);
-    url.searchParams.set("past_days", "2");
-    url.searchParams.set("forecast_days", "5");
+    url.searchParams.set("past_days", "7");
+    url.searchParams.set("forecast_days", "7");
     const res = await fetch(url, { headers: { Accept: "application/json" } });
     if (!res.ok) return out;
     const json = (await res.json()) as {
@@ -362,10 +383,18 @@ async function loadSpaceWeather(): Promise<SpacePack> {
       headers: { Accept: "application/json" },
     });
     if (res.ok) {
-      const json = (await res.json()) as Record<string, {
-        DateStamp?: string;
-        R?: { Scale?: string | null; MinorProb?: string | null; MajorProb?: string | null; Text?: string | null };
-      }>;
+      const json = (await res.json()) as Record<
+        string,
+        {
+          DateStamp?: string;
+          R?: {
+            Scale?: string | null;
+            MinorProb?: string | null;
+            MajorProb?: string | null;
+            Text?: string | null;
+          };
+        }
+      >;
       for (const key of Object.keys(json)) {
         const row = json[key];
         const date = row.DateStamp;

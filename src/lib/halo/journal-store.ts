@@ -33,7 +33,7 @@ export const useJournal = create<JournalState>()(
           entries: get().entries.map((e) => (e.id === id ? { ...e, ...patch } : e)),
         }),
     }),
-    { name: "halo-journal-v1" },
+    { name: "halo-journal-v1", skipHydration: true },
   ),
 );
 

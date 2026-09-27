@@ -46,7 +46,8 @@ import {
 } from "./preview";
 
 // Kick (and share) PGLite bootstrap as soon as the auth server module loads.
-void ensureDbReady();
+// A public deployment with auth disabled does not need the embedded preview DB.
+if (process.env.VITE_AUTH_ENABLED !== "false") void ensureDbReady();
 
 /**
  * Preview secret must outlive module reloads: PGLite (and its session rows) is

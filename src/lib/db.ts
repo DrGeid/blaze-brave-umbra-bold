@@ -229,10 +229,18 @@ export function ensureDbReady(): Promise<void> {
 const globalBoot = globalThis as typeof globalThis & {
   __pgBootstrapPromise__?: Promise<void>;
 };
-if (typeof window === "undefined" && dbSource === "pglite") {
+// The public, unauthenticated deployment uses no server database. Avoid loading
+// PGLite at module import in that mode; its WASM/data files are not bundled into
+// the Vercel function. Explicit getSql() calls still initialize it on demand.
+if (
+  typeof window === "undefined" &&
+  dbSource === "pglite" &&
+  process.env.VITE_AUTH_ENABLED !== "false"
+) {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] PGLite bootstrap failed:", err);
     throw err;
   });
 }
+
